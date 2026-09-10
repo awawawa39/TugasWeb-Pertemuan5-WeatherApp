@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stasiun Cuaca</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0b1220;
+    --panel:#101a2c;
+    --paper:#e9edf3;
+    --muted:#8b94a7;
+    --line:rgba(233,237,243,0.12);
+    --line-strong:rgba(233,237,243,0.22);
+    --danger:#e0685f;
+    --accent:#f0a63d;
+    --accent-soft:rgba(240,166,61,0.15);
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    font-family:'Inter',ui-sans-serif,system-ui,sans-serif;
+    color:var(--paper);
+    background:
+      radial-gradient(120% 90% at 15% 0%, rgba(240,166,61,0.16), transparent 55%),
+      linear-gradient(180deg, var(--ink), #060a12 80%);
+    transition:background 900ms ease;
+    display:flex;
+    justify-content:center;
+    padding:32px 16px 60px;
+    position:relative;
+    overflow-x:hidden;
+  }
+  #fx{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    overflow:hidden;
+    z-index:0;
+  }
+  .app{
+    width:100%;
+    max-width:460px;
+    position:relative;
+    z-index:1;
+  }
+  .wordmark{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom:22px;
+  }
+  .wordmark h1{
+    font-family:'Space Grotesk',ui-sans-serif,sans-serif;
+    font-weight:600;
+    font-size:19px;
+    margin:0;
+    letter-spacing:0.2px;
+  }
+  .wordmark h1 span{color:var(--accent);}
+  .unit-toggle{
+    display:flex;
+    border:1px solid var(--line-strong);
+    border-radius:999px;
+    overflow:hidden;
+  }
+  .unit-toggle button{
+    border:none;
+    background:transparent;
+    color:var(--muted);
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:12px;
+    padding:6px 12px;
+    cursor:pointer;
+  }
+  .unit-toggle button.active{
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .searchbar{
+    display:flex;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .searchbar input{
+    flex:1;
+    background:rgba(233,237,243,0.05);
+    border:1px solid var(--line-strong);
+    border-radius:var(--radius);
+    color:var(--paper);
+    font-family:'Inter',sans-serif;
+    font-size:15px;
+    padding:12px 14px;
+    outline:none;
+  }
+  .searchbar input::placeholder{color:var(--muted);}
+  .searchbar input:focus{border-color:var(--accent);}
+  .searchbar button{
+    background:var(--paper);
+    color:var(--ink);
+    border:none;
+    border-radius:var(--radius);
+    padding:0 18px;
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:14px;
+    cursor:pointer;
+  }
+  .searchbar button:disabled{opacity:0.5;cursor:default;}
+  .subrow{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:18px;
+    min-height:20px;
+  }
+  .locate{
+    background:none;
+    border:none;
+    color:var(--muted);
+    font-size:13px;
+    font-family:'Inter',sans-serif;
+    cursor:pointer;
+    padding:0;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .locate:hover{color:var(--paper);}
+  .history{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  .history button{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--muted);
+    border-radius:999px;
+    padding:5px 11px;
+    font-size:12px;
+    font-family:'Inter',sans-serif;
+    cursor:pointer;
+  }
+  .history button:hover{border-color:var(--line-strong);color:var(--paper);}
+  .history .clear{border:none;text-decoration:underline;padding:5px 2px;}
+  .status{
+    display:none;
+    align-items:center;
+    gap:10px;
+    padding:16px 2px;
+    color:var(--muted);
+    font-size:14px;
+  }
+  .status.show{display:flex;}
+  .spinner{
+    width:16px;height:16px;
+    border-radius:50%;
+    border:2px solid var(--line-strong);
+    border-top-color:var(--accent);
+    animation:spin 0.8s linear infinite;
+    flex:none;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .error-box{
+    display:none;
+    background:rgba(224,104,95,0.1);
+    border:1px solid rgba(224,104,95,0.35);
+    color:#f2b3ad;
+    border-radius:var(--radius);
+    padding:13px 15px;
+    font-size:13.5px;
+    margin-bottom:6px;
+    line-height:1.5;
+  }
+  .error-box.show{display:block;}
+  .panel{
+    display:none;
+  }
+  .panel.show{display:block;}
+  .hero{
+    display:flex;
+    align-items:center;
+    gap:18px;
+    padding:22px 2px 20px;
+  }
+  .hero-icon svg{width:84px;height:84px;display:block;}
+  .hero-main{flex:1;min-width:0;}
+  .hero-temp{
+    font-family:'Space Grotesk',ui-sans-serif,sans-serif;
+    font-weight:700;
+    font-size:56px;
+    line-height:1;
+    font-variant-numeric:tabular-nums;
+    display:flex;
+    align-items:flex-start;
+    gap:2px;
+  }
+  .hero-temp small{font-size:22px;font-weight:600;color:var(--muted);margin-top:6px;}
+  .hero-desc{font-size:15px;color:var(--paper);margin-top:6px;text-transform:capitalize;}
+  .hero-place{font-size:13px;color:var(--muted);margin-top:3px;}
+  .hairline{border:none;border-top:1px solid var(--line);margin:4px 0;}
+  .details{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0;
+    margin:14px 0 6px;
+  }
+  .detail-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:11px 4px;
+    border-bottom:1px solid var(--line);
+    font-size:13.5px;
+  }
+  .detail-row:nth-child(odd){padding-right:14px;}
+  .detail-row .label{color:var(--muted);}
+  .detail-row .value{font-weight:500;font-variant-numeric:tabular-nums;}
+  .section-label{
+    font-size:13px;
+    color:var(--muted);
+    margin:22px 2px 12px;
+  }
+  .forecast{
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    padding-bottom:6px;
+    margin:0 -2px;
+  }
+  .forecast::-webkit-scrollbar{height:0;}
+  .fday{
+    flex:0 0 auto;
+    width:84px;
+    text-align:center;
+    background:rgba(233,237,243,0.04);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:12px 6px;
+  }
+  .fday .dname{font-size:12.5px;color:var(--muted);margin-bottom:6px;}
+  .fday svg{width:34px;height:34px;}
+  .fday .hi{font-size:14px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums;}
+  .fday .lo{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;}
+  .footer{
+    margin-top:26px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:12px;
+    color:var(--muted);
+  }
+  .footer a{color:var(--muted);}
+  .footer button{
+    background:none;border:none;color:var(--muted);
+    font-size:12px;cursor:pointer;text-decoration:underline;
+    padding:0;font-family:'Inter',sans-serif;
+  }
+  .keypanel{
+    background:rgba(233,237,243,0.04);
+    border:1px solid var(--line-strong);
+    border-radius:var(--radius);
+    padding:18px;
+    margin-top:14px;
+  }
+  .keypanel p{font-size:13.5px;color:var(--muted);line-height:1.6;margin:0 0 12px;}
+  .keypanel a{color:var(--accent);}
+  .keyrow{display:flex;gap:8px;}
+  .keyrow input{
+    flex:1;background:rgba(233,237,243,0.05);border:1px solid var(--line-strong);
+    border-radius:10px;color:var(--paper);padding:10px 12px;font-size:13.5px;outline:none;
+    font-family:'Inter',sans-serif;
+  }
+  .keyrow button{
+    background:var(--paper);color:var(--ink);border:none;border-radius:10px;
+    padding:0 16px;font-weight:600;font-size:13px;cursor:pointer;
+  }
+  .empty{
+    text-align:center;
+    color:var(--muted);
+    font-size:14px;
+    padding:50px 10px 30px;
+    line-height:1.7;
+  }
+  .drop{
+    position:absolute;width:1.5px;background:rgba(180,210,235,0.5);
+    animation:fall linear infinite;
+  }
+  @keyframes fall{from{transform:translateY(-10vh);}to{transform:translateY(110vh);}}
+  .flake{
+    position:absolute;border-radius:50%;background:rgba(255,255,255,0.75);
+    animation:drift linear infinite;
+  }
+  @keyframes drift{
+    0%{transform:translate(0,-10vh);}
+    100%{transform:translate(20px,110vh);}
+  }
+  .puff{
+    position:absolute;border-radius:50%;filter:blur(30px);opacity:0.35;
+    animation:glide linear infinite;
+  }
+  @keyframes glide{
+    from{transform:translateX(-20vw);}
+    to{transform:translateX(120vw);}
+  }
+  @media (max-width:420px){
+    .hero{gap:12px;}
+    .hero-icon svg{width:68px;height:68px;}
+    .hero-temp{font-size:46px;}
+  }
+</style>
+</head>
+<body>
+<div id="fx"></div>
+<div class="app">
+
+  <div class="wordmark">
+    <h1>Stasiun<span>Cuaca</span></h1>
+    <div class="unit-toggle">
+      <button id="btn-c" class="active">°C</button>
+      <button id="btn-f">°F</button>
+    </div>
+  </div>
+
+  <div class="searchbar">
+    <input id="cityInput" type="text" placeholder="Cari kota, mis. Medan" autocomplete="off">
+    <button id="searchBtn">Cari</button>
+  </div>
+
+  <div class="subrow">
+    <button class="locate" id="locateBtn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path></svg>
+      Gunakan lokasi saya
+    </button>
+    <div class="history" id="historyRow"></div>
+  </div>
+
+  <div class="status" id="statusBox"><div class="spinner"></div><span id="statusText">Mengambil data cuaca…</span></div>
+  <div class="error-box" id="errorBox"></div>
+
+  <div class="panel" id="weatherPanel">
+    <div class="hero">
+      <div class="hero-icon" id="heroIcon"></div>
+      <div class="hero-main">
+        <div class="hero-temp"><span id="tempVal">--</span><small id="tempUnit">°C</small></div>
+        <div class="hero-desc" id="descVal">—</div>
+        <div class="hero-place" id="placeVal">—</div>
+      </div>
+    </div>
+    <hr class="hairline">
+    <div class="details" id="detailsGrid"></div>
+    <div class="section-label">Prakiraan 5 hari</div>
+    <div class="forecast" id="forecastRow"></div>
+  </div>
+
+  <div class="empty panel show" id="emptyState">Cari nama kota untuk melihat cuacanya di sini.</div>
+
+  <div class="footer">
+    <span>Data oleh <a href="https://openweathermap.org" target="_blank" rel="noopener">OpenWeatherMap</a></span>
+    <button id="settingsBtn">Pengaturan API key</button>
+  </div>
+
+  <div class="keypanel" id="keyPanel" style="display:none;">
+    <p>Masukkan API key OpenWeatherMap kamu. Key disimpan hanya untuk akun kamu di percakapan ini. Belum punya? <a href="https://home.openweathermap.org/users/sign_up" target="_blank" rel="noopener">Dapatkan API key gratis di sini</a>.</p>
+    <div class="keyrow">
+      <input id="apiKeyInput" type="text" placeholder="Tempel API key di sini">
+      <button id="saveKeyBtn">Simpan</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const state = {
+  apiKey: null,
+  units: 'metric',
+  history: [],
+  lastCurrent: null,
+  lastForecastDays: null,
+};
+
+const $ = (id) => document.getElementById(id);
+
+const ICONS = {
+  clear_day: `<svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="13" fill="#F0A63D"/><g stroke="#F0A63D" stroke-width="3" stroke-linecap="round"><path d="M32 6v8M32 50v8M6 32h8M50 32h8M13 13l6 6M45 45l6 6M51 13l-6 6M19 45l-6 6"/></g></svg>`,
+  clear_night: `<svg viewBox="0 0 64 64" fill="none"><path d="M40 12a20 20 0 1 0 12 36 16 16 0 0 1-12-36z" fill="#8E9AD1"/><circle cx="46" cy="18" r="1.6" fill="#C7CEF2"/><circle cx="51" cy="26" r="1" fill="#C7CEF2"/></svg>`,
+  clouds_day: `<svg viewBox="0 0 64 64" fill="none"><circle cx="24" cy="26" r="9" fill="#F0A63D" opacity="0.85"/><path d="M18 42a11 11 0 0 1 21-4 9 9 0 0 1-2 18H20a10 10 0 0 1-2-14z" fill="#9AA7B8"/></svg>`,
+  clouds_night: `<svg viewBox="0 0 64 64" fill="none"><path d="M30 14a11 11 0 1 0 7 19 9 9 0 0 1-7-19z" fill="#8E9AD1" opacity="0.85"/><path d="M18 42a11 11 0 0 1 21-4 9 9 0 0 1-2 18H20a10 10 0 0 1-2-14z" fill="#828FA0"/></svg>`,
+  rain: `<svg viewBox="0 0 64 64" fill="none"><path d="M16 34a11 11 0 0 1 21-4 9 9 0 0 1-1 18H18a10 10 0 0 1-2-14z" fill="#7C8CA0"/><g stroke="#4C86B0" stroke-width="3" stroke-linecap="round"><path d="M22 48l-3 7M32 48l-3 7M42 48l-3 7"/></g></svg>`,
+  drizzle: `<svg viewBox="0 0 64 64" fill="none"><path d="M16 32a11 11 0 0 1 21-4 9 9 0 0 1-1 18H18a10 10 0 0 1-2-14z" fill="#8B98A9"/><g stroke="#6FA3C4" stroke-width="2.5" stroke-linecap="round"><path d="M22 46l-2 5M32 46l-2 5M42 46l-2 5"/></g></svg>`,
+  thunderstorm: `<svg viewBox="0 0 64 64" fill="none"><path d="M16 30a11 11 0 0 1 21-4 9 9 0 0 1-1 18H18a10 10 0 0 1-2-14z" fill="#6E6685"/><path d="M32 42l-6 10h6l-3 8 10-12h-6l4-6z" fill="#C9A93F"/></svg>`,
+  snow: `<svg viewBox="0 0 64 64" fill="none"><path d="M16 30a11 11 0 0 1 21-4 9 9 0 0 1-1 18H18a10 10 0 0 1-2-14z" fill="#A9B7C4"/><g stroke="#BFE0EC" stroke-width="2.4" stroke-linecap="round"><path d="M22 46v8M18 50h8M32 47v9M28 51h8M42 46v8M38 50h8"/></g></svg>`,
+  mist: `<svg viewBox="0 0 64 64" fill="none"><g stroke="#A79E8E" stroke-width="3" stroke-linecap="round"><path d="M12 24h30M8 32h40M14 40h32M10 48h36"/></g></svg>`,
+};
+
+const iconKeyFor = (id, isNight) => {
+  if (id >= 200 && id < 300) return 'thunderstorm';
+  if (id >= 300 && id < 400) return 'drizzle';
+  if (id >= 500 && id < 600) return 'rain';
+  if (id >= 600 && id < 700) return 'snow';
+  if (id >= 700 && id < 800) return 'mist';
+  if (id === 800) return isNight ? 'clear_night' : 'clear_day';
+  if (id > 800) return isNight ? 'clouds_night' : 'clouds_day';
+  return 'clouds_day';
+};
+
+const THEMES = {
+  clear_day:    { a:'rgba(240,166,61,0.22)', b:'#0b1220', fx:'sun' },
+  clear_night:  { a:'rgba(110,123,199,0.24)', b:'#060814', fx:'stars' },
+  clouds_day:   { a:'rgba(154,167,184,0.18)', b:'#0c1420', fx:'clouds' },
+  clouds_night: { a:'rgba(130,143,160,0.18)', b:'#070c16', fx:'clouds' },
+  rain:         { a:'rgba(76,134,176,0.24)', b:'#070d18', fx:'rain' },
+  drizzle:      { a:'rgba(111,163,196,0.2)', b:'#0a1220', fx:'rain' },
+  thunderstorm: { a:'rgba(139,111,176,0.26)', b:'#05070f', fx:'storm' },
+  snow:         { a:'rgba(191,224,236,0.22)', b:'#0a1420', fx:'snow' },
+  mist:         { a:'rgba(167,158,142,0.18)', b:'#0d0f14', fx:'mist' },
+};
+
+const applyTheme = (key) => {
+  const t = THEMES[key] || THEMES.clouds_day;
+  document.body.style.background =
+    `radial-gradient(120% 90% at 15% 0%, ${t.a}, transparent 55%), linear-gradient(180deg, ${t.b}, #05070c 80%)`;
+  renderFx(t.fx);
+};
+
+const renderFx = (kind) => {
+  const fx = $('fx');
+  fx.innerHTML = '';
+  if (kind === 'rain') {
+    const drops = Array.from({ length: 40 }).map(() => {
+      const left = Math.random() * 100;
+      const dur = 0.6 + Math.random() * 0.6;
+      const delay = Math.random() * 2;
+      const h = 14 + Math.random() * 18;
+      return `<div class="drop" style="left:${left}vw;height:${h}px;animation-duration:${dur}s;animation-delay:-${delay}s;"></div>`;
+    }).join('');
+    fx.innerHTML = drops;
+  } else if (kind === 'snow') {
+    const flakes = Array.from({ length: 28 }).map(() => {
+      const left = Math.random() * 100;
+      const dur = 6 + Math.random() * 6;
+      const delay = Math.random() * 6;
+      const size = 2 + Math.random() * 3;
+      return `<div class="flake" style="left:${left}vw;width:${size}px;height:${size}px;animation-duration:${dur}s;animation-delay:-${delay}s;"></div>`;
+    }).join('');
+    fx.innerHTML = flakes;
+  } else if (kind === 'clouds' || kind === 'mist') {
+    const puffs = Array.from({ length: 4 }).map((_, i) => {
+      const top = 10 + i * 20 + Math.random() * 10;
+      const dur = 40 + Math.random() * 30;
+      const size = 180 + Math.random() * 120;
+      return `<div class="puff" style="top:${top}vh;width:${size}px;height:${size * 0.5}px;background:#cfd8e0;animation-duration:${dur}s;animation-delay:-${Math.random() * dur}s;"></div>`;
+    }).join('');
+    fx.innerHTML = puffs;
+  } else if (kind === 'sun') {
+    fx.innerHTML = `<div class="puff" style="top:-10vh;left:5vw;width:340px;height:340px;background:#f0a63d;animation:none;opacity:0.18;"></div>`;
+  } else if (kind === 'stars') {
+    const stars = Array.from({ length: 30 }).map(() => {
+      const left = Math.random() * 100, top = Math.random() * 60;
+      const size = 1 + Math.random() * 1.5;
+      return `<div style="position:absolute;left:${left}vw;top:${top}vh;width:${size}px;height:${size}px;border-radius:50%;background:#cdd6f5;opacity:${0.3 + Math.random() * 0.6};"></div>`;
+    }).join('');
+    fx.innerHTML = stars;
+  } else if (kind === 'storm') {
+    fx.innerHTML = `<div class="puff" style="top:-15vh;left:10vw;width:400px;height:250px;background:#4a3f66;animation:none;opacity:0.25;"></div>`;
+  }
+};
+
+const toDisplayTemp = (celsius) => {
+  const val = state.units === 'imperial' ? celsius * 9 / 5 + 32 : celsius;
+  return Math.round(val);
+};
+
+const setStatus = (show, text) => {
+  $('statusBox').classList.toggle('show', show);
+  if (text) $('statusText').textContent = text;
+};
+
+const setError = (msg) => {
+  const box = $('errorBox');
+  if (!msg) { box.classList.remove('show'); box.textContent = ''; return; }
+  box.textContent = msg;
+  box.classList.add('show');
+};
+
+const showPanel = (hasData) => {
+  $('weatherPanel').classList.toggle('show', hasData);
+  $('emptyState').classList.toggle('show', !hasData);
+};
+
+const fmtHour = (unixSeconds, tzOffsetSeconds) => {
+  const d = new Date((unixSeconds + tzOffsetSeconds) * 1000);
+  const h = d.getUTCHours().toString().padStart(2, '0');
+  const m = d.getUTCMinutes().toString().padStart(2, '0');
+  return `${h}:${m}`;
+};
+
+const dayLabel = (dateStr) => {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('id-ID', { weekday: 'short' });
+};
+
+const groupForecastByDay = (list) => {
+  const grouped = list.reduce((acc, item) => {
+    const date = item.dt_txt.split(' ')[0];
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(item);
+    return acc;
+  }, {});
+
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  return Object.keys(grouped)
+    .filter((date) => date !== todayStr)
+    .slice(0, 5)
+    .map((date) => {
+      const entries = grouped[date];
+      const temps = entries.map((e) => e.main.temp);
+      const hi = Math.round(Math.max(...temps));
+      const lo = Math.round(Math.min(...temps));
+      const midday = entries.reduce((closest, e) => {
+        const hour = Number(e.dt_txt.split(' ')[1].split(':')[0]);
+        const closestHour = Number(closest.dt_txt.split(' ')[1].split(':')[0]);
+        return Math.abs(hour - 13) < Math.abs(closestHour - 13) ? e : closest;
+      }, entries[0]);
+      return { date, hi, lo, weatherId: midday.weather[0].id };
+    });
+};
+
+const isNightNow = (data) => {
+  const nowUtc = data.dt;
+  return nowUtc < data.sys.sunrise || nowUtc > data.sys.sunset;
+};
+
+const renderWeather = (current, forecastDays) => {
+  state.lastCurrent = current;
+  state.lastForecastDays = forecastDays;
+
+  const night = isNightNow(current);
+  const key = iconKeyFor(current.weather[0].id, night);
+  applyTheme(key);
+
+  $('heroIcon').innerHTML = ICONS[key] || ICONS.clouds_day;
+  $('tempVal').textContent = toDisplayTemp(current.main.temp);
+  $('tempUnit').textContent = state.units === 'imperial' ? '°F' : '°C';
+  $('descVal').textContent = current.weather[0].description;
+  $('placeVal').textContent = `${current.name}, ${current.sys.country} · ${fmtHour(current.dt, current.timezone)}`;
+
+  const rows = [
+    ['Terasa seperti', `${toDisplayTemp(current.main.feels_like)}°`],
+    ['Kelembapan', `${current.main.humidity}%`],
+    ['Angin', `${Math.round(current.wind.speed * 3.6)} km/j`],
+    ['Tekanan udara', `${current.main.pressure} hPa`],
+    ['Matahari terbit', fmtHour(current.sys.sunrise, current.timezone)],
+    ['Matahari terbenam', fmtHour(current.sys.sunset, current.timezone)],
+  ];
+  $('detailsGrid').innerHTML = rows
+    .map(([label, value]) => `<div class="detail-row"><span class="label">${label}</span><span class="value">${value}</span></div>`)
+    .join('');
+
+  $('forecastRow').innerHTML = forecastDays
+    .map((d) => {
+      const dKey = iconKeyFor(d.weatherId, false);
+      const unit = state.units === 'imperial' ? '°F' : '°C';
+      const hi = state.units === 'imperial' ? Math.round(d.hi * 9 / 5 + 32) : d.hi;
+      const lo = state.units === 'imperial' ? Math.round(d.lo * 9 / 5 + 32) : d.lo;
+      return `<div class="fday">
+        <div class="dname">${dayLabel(d.date)}</div>
+        ${ICONS[dKey] || ICONS.clouds_day}
+        <div class="hi">${hi}${unit}</div>
+        <div class="lo">${lo}${unit}</div>
+      </div>`;
+    })
+    .join('');
+
+  showPanel(true);
+};
+
+const buildUrl = (path, params) => {
+  const base = `https://api.openweathermap.org/data/2.5/${path}`;
+  const query = new URLSearchParams({ ...params, appid: state.apiKey, units: 'metric', lang: 'id' });
+  return `${base}?${query.toString()}`;
+};
+
+const fetchAndRender = async (params, labelForHistory) => {
+  setError(null);
+  setStatus(true, 'Mengambil data cuaca…');
+  $('searchBtn').disabled = true;
+
+  try {
+    const [currentRes, forecastRes] = await Promise.all([
+      fetch(buildUrl('weather', params)),
+      fetch(buildUrl('forecast', params)),
+    ]);
+
+    if (currentRes.status === 404) {
+      throw { kind: 'notfound' };
+    }
+    if (currentRes.status === 401 || forecastRes.status === 401) {
+      throw { kind: 'unauthorized' };
+    }
+    if (!currentRes.ok || !forecastRes.ok) {
+      throw { kind: 'server', status: currentRes.status };
+    }
+
+    const current = await currentRes.json();
+    const forecast = await forecastRes.json();
+    const forecastDays = groupForecastByDay(forecast.list || []);
+
+    renderWeather(current, forecastDays);
+    if (labelForHistory) await addHistory(labelForHistory);
+  } catch (err) {
+    showPanel(false);
+    if (err && err.kind === 'notfound') {
+      setError('Kota tidak ditemukan. Periksa kembali ejaannya lalu coba lagi.');
+    } else if (err && err.kind === 'unauthorized') {
+      setError('API key tidak valid atau belum aktif. Periksa key kamu di pengaturan.');
+    } else if (err instanceof TypeError) {
+      setError('Tidak bisa terhubung ke layanan cuaca. Periksa koneksi internet kamu dan coba lagi.');
+    } else {
+      setError('Terjadi kesalahan saat mengambil data cuaca. Coba lagi sebentar lagi.');
+    }
+  } finally {
+    setStatus(false);
+    $('searchBtn').disabled = false;
+  }
+};
+
+const searchCity = async () => {
+  const city = $('cityInput').value.trim();
+  if (!city) {
+    setError('Ketik nama kota terlebih dahulu.');
+    return;
+  }
+  await fetchAndRender({ q: city }, city);
+};
+
+const useLocation = () => {
+  if (!navigator.geolocation) {
+    setError('Perangkat ini tidak mendukung deteksi lokasi.');
+    return;
+  }
+  setStatus(true, 'Mendeteksi lokasi kamu…');
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      const { latitude, longitude } = pos.coords;
+      await fetchAndRender({ lat: latitude, lon: longitude }, null);
+    },
+    () => {
+      setStatus(false);
+      setError('Tidak bisa mengambil lokasi. Izinkan akses lokasi lalu coba lagi.');
+    }
+  );
+};
+
+const addHistory = async (city) => {
+  const normalized = city.trim();
+  const next = [normalized, ...state.history.filter((c) => c.toLowerCase() !== normalized.toLowerCase())].slice(0, 6);
+  state.history = next;
+  renderHistory();
+  try {
+    await window.storage.set('weather_history', JSON.stringify(next), false);
+  } catch (e) {}
+};
+
+const renderHistory = () => {
+  const row = $('historyRow');
+  if (state.history.length === 0) { row.innerHTML = ''; return; }
+  const chips = state.history
+    .map((c) => `<button data-city="${c}">${c}</button>`)
+    .join('');
+  row.innerHTML = chips + `<button class="clear" id="clearHistoryBtn">Hapus</button>`;
+  row.querySelectorAll('button[data-city]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      $('cityInput').value = btn.dataset.city;
+      searchCity();
+    });
+  });
+  const clearBtn = $('clearHistoryBtn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', async () => {
+      state.history = [];
+      renderHistory();
+      try { await window.storage.delete('weather_history', false); } catch (e) {}
+    });
+  }
+};
+
+const setUnits = (units) => {
+  state.units = units;
+  $('btn-c').classList.toggle('active', units === 'metric');
+  $('btn-f').classList.toggle('active', units === 'imperial');
+  if (state.lastCurrent && state.lastForecastDays) {
+    renderWeather(state.lastCurrent, state.lastForecastDays);
+  }
+};
+
+const saveApiKey = async (key) => {
+  state.apiKey = key.trim();
+  try { await window.storage.set('owm_api_key', state.apiKey, false); } catch (e) {}
+  $('keyPanel').style.display = 'none';
+};
+
+const loadInitialData = async () => {
+  try {
+    const res = await window.storage.get('owm_api_key', false);
+    if (res && res.value) state.apiKey = res.value;
+  } catch (e) {}
+  try {
+    const res = await window.storage.get('weather_history', false);
+    if (res && res.value) state.history = JSON.parse(res.value);
+  } catch (e) {}
+
+  renderHistory();
+  applyTheme('clouds_night');
+
+  if (!state.apiKey) {
+    $('keyPanel').style.display = 'block';
+  }
+};
+
+$('searchBtn').addEventListener('click', searchCity);
+$('cityInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') searchCity(); });
+$('locateBtn').addEventListener('click', useLocation);
+$('btn-c').addEventListener('click', () => setUnits('metric'));
+$('btn-f').addEventListener('click', () => setUnits('imperial'));
+$('settingsBtn').addEventListener('click', () => {
+  const panel = $('keyPanel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  if (panel.style.display === 'block' && state.apiKey) $('apiKeyInput').value = state.apiKey;
+});
+$('saveKeyBtn').addEventListener('click', () => {
+  const key = $('apiKeyInput').value;
+  if (!key.trim()) { setError('Masukkan API key yang valid.'); return; }
+  saveApiKey(key);
+  setError(null);
+});
+
+loadInitialData();
+</script>
+</body>
+</html>
